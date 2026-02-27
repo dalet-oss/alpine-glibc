@@ -38,7 +38,7 @@ jobs:
               echo "Version ${VERSION} already exists in ${FILENAME}"; \
             else \
               echo "Version ${VERSION} has not been compiled yet" && \
-              echo "compile_required=${VERSION}" >${GITHUB_OUTPUT} && break; \
+              echo "compile_required=${VERSION}" > ${GITHUB_OUTPUT} && break; \
             fi; \
           done
 
