@@ -1,0 +1,64 @@
+name: 'Compile glibc'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/**
+      - glibc/*.tar.gz
+
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: false
+
+
+jobs:
+
+  find-unpackaged-version:
+    runs-on: ubuntu-latest
+    outputs:
+      packaging_required: ${{ steps.parse.outputs.packaging_required }}
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - id: parse
+        name: Parse glibc-versions.yml
+        run: |
+          VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
+          for VERSION in ${VERSIONS[@]}; do \
+            BASE_APK_FILENAME="./apk/amd64/{VERSION}/glibc-${VERSION}.apk"; \
+            if [ -f "${BASE_APK_FILENAME}" ]; then \
+              echo "Version ${VERSION} already exists in ${BASE_APK_FILENAME}"; \
+            else \
+              echo "Version ${VERSION} has not been packaged yet" && \
+              echo "packaging_required=${VERSION}" >${GITHUB_OUTPUT} && break; \
+            fi; \
+          done
+
+
+  package-apk:
+    needs: find-unpackaged-version
+    if: needs.find-unpackaged-version.outputs.packaging_required != ''
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.find-unpackaged-version.outputs.packaging_required }}
+      FILENAME: glibc/glibc-bin-${{ needs.find-unpackaged-version.outputs.packaging_required }}-x86_64.tar.gz
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Ensure output directories are present; add dummy apk file for arm64
+        run: |
+          mkdir -p apk/amd64/{VERSION}
+          mkdir -p apk/arm64/{VERSION}
+          touch apk/arm64/{VERSION}/glibc-dummy-${VERSION}.apk
+          git status; git diff
