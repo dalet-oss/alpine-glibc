@@ -50,6 +50,9 @@ jobs:
     needs: find-unpackaged-version
     if: needs.find-unpackaged-version.outputs.packaging_required != ''
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     env:
       VERSION: ${{ needs.find-unpackaged-version.outputs.packaging_required }}
       FILENAME: glibc/glibc-bin-${{ needs.find-unpackaged-version.outputs.packaging_required }}-x86_64.tar.gz
