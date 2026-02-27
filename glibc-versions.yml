@@ -1,6 +1,6 @@
 versions:
   - glibcVersion: '2.36'
-    sha512sum: 'deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef012345678900'
+    sha512sum: '0e1dce62f709e4a95b489fac0763b1d6766203cb4b69b3c3c000e9be22150b7ea3d46f740bfa617c5b17bba0fe92066116648a9bd25ab8351bc915cf75ae4b80'
   - glibcVersion: '2.37'
     sha512sum: 'deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef012345678900'
   - glibcVersion: '2.38'
