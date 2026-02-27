@@ -1,0 +1,5 @@
+*.idea
+*.iml
+alpine-packaging-rsa
+APKBUILD
+APKBUILD-e
