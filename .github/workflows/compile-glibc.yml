@@ -38,7 +38,7 @@ jobs:
               echo "Version ${VERSION} already exists in ${FILENAME}"; \
             else \
               echo "Version ${VERSION} has not been compiled yet" && \
-              echo "compile_required=${VERSION}" >${GITHUB_OUTPUT} && break; \
+              echo "compile_required=${VERSION}" > ${GITHUB_OUTPUT} && break; \
             fi; \
           done
 
@@ -74,7 +74,7 @@ jobs:
           SHA512=$(sha512sum ${FILENAME} | awk '{ print $1 }')
           echo "sha512sum for ${FILENAME} is ${SHA512}"
           yq e '(.versions[] | select(.glibcVersion == "'"$VERSION"'") | .sha512sum) = "'"$SHA512"'"' -i glibc-versions.yml
-          git add glibc/glibc-bin-${VERSION}-x64_64.tar.gz glibc-versions.yml
+          git add glibc/glibc-bin-${VERSION}-x86_64.tar.gz glibc-versions.yml
 
       - name: Submit new glibc tarball & its checksum via PR
         uses: peter-evans/create-pull-request@v6
