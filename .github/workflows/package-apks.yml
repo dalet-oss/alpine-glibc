@@ -1,4 +1,4 @@
-name: 'Compile glibc'
+name: 'Package APKs'
 
 on:
   workflow_dispatch:
@@ -62,3 +62,10 @@ jobs:
           mkdir -p apk/arm64/{VERSION}
           touch apk/arm64/{VERSION}/glibc-dummy-${VERSION}.apk
           git status; git diff
+
+      - name: Provision alpine-packaging-rsa key from Github secret
+        env:
+          ALPINE_PACKAGING_RSA_PRIVATE_KEY: ${{ secrets.ALPINE_PACKAGING_RSA_PRIVATE_KEY }}
+        run: |
+          echo "${ALPINE_PACKAGING_RSA_PRIVATE_KEY}" > alpine-packaging-rsa
+          head -n 1 alpine-packaging-rsa
