@@ -1,0 +1,10 @@
+versions:
+
+  - glibcVersion: '2.40'
+    apkVersion: '2.40-r0'
+    sha512sum: 'deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef012345678900'
+
+# Copy-and-paste the block below when adding a new version to the list above.
+#  - glibcVersion: '2.xx'
+#    apkVersion: '2.xx-r0'
+#    sha512sum: 'deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef012345678900'
