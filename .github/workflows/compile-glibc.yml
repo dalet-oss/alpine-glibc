@@ -50,7 +50,6 @@ jobs:
 
 
   compile-glibc-amd64:
-    name: Compile glibc for Alpine on amd64 CPU architecture
     needs: find-uncompiled-version
     if: needs.find-uncompiled-version.outputs.compile_required != '' && needs.find-uncompiled-version.outputs.amd64_required != ''
     runs-on: ubuntu-latest
@@ -95,7 +94,6 @@ jobs:
 
 
   compile-glibc-arm64:
-    name: Compile glibc for Alpine on arm64 CPU architecture
     needs: find-uncompiled-version
     if: needs.find-uncompiled-version.outputs.compile_required != '' && needs.find-uncompiled-version.outputs.arm64_required != ''
     runs-on: ubuntu-latest

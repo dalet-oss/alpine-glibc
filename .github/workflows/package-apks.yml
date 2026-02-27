@@ -204,7 +204,7 @@ jobs:
     needs:
       - discover-versions
       - find-unpackaged-version
-    if: needs.find-unpackaged-version.outputs.packaging_required == ''
+    if: needs.find-unpackaged-version.outputs.packaging_required == '' && false # temporarily disabled while investigating the possibility of introducing ARM64 support
     runs-on: ubuntu-latest
     strategy:
       matrix:
