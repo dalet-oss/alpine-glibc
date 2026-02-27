@@ -68,12 +68,13 @@ jobs:
         run: |
           docker run --rm --env STDOUT=1 sgerrand/glibc-builder ${VERSION} /usr/glibc-compat > ${FILENAME}
 
-      - name: Show output file, determine checksum; update checksum in glibc-versions.yml
+      - name: Show output file, determine checksum; update checksum in glibc-versions.yml; git add
         run: |
           ls -l ${FILENAME}
           SHA512=$(sha512sum ${FILENAME} | awk '{ print $1 }')
           echo "sha512sum for ${FILENAME} is ${SHA512}"
           yq e '(.versions[] | select(.glibcVersion == "'"$VERSION"'") | .sha512sum) = "'"$SHA512"'"' -i glibc-versions.yml
+          git add glibc/glibc-bin-${VERSION}-x64_64.tar.gz glibc-versions.yml
 
       - name: Submit new glibc tarball & its checksum via PR
         uses: peter-evans/create-pull-request@v6
@@ -83,13 +84,10 @@ jobs:
           body: |
             Automated PR to add the binary artifact for glibc version ${{ env.VERSION }}.
           labels: automated
-          add-paths: |
-            glibc/glibc-bin-${VERSION}-x64_64.tar.gz
-            glibc-versions.yml
           commit-message: "Add glibc bin for ${{ env.VERSION }}, compiled by Github Actions"
 
 
-  check-glibc-checksums:
+  verify-all-glibc-checksums:
     needs: find-uncompiled-version
     if: needs.find-uncompiled-version.outputs.compile_required == ''
     runs-on: ubuntu-latest
@@ -100,7 +98,7 @@ jobs:
         with:
           lfs: true
 
-      - name: Check glibc checksums
+      - name: Verify all glibc checksums
         run: |
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
           for VERSION in ${VERSIONS[@]}; do \

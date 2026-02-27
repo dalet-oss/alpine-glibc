@@ -63,9 +63,9 @@ jobs:
 
       - name: Ensure output directories are present; add dummy apk file for arm64
         run: |
-          mkdir -p apk/amd64/{VERSION}
-          mkdir -p apk/arm64/{VERSION}
-          touch apk/arm64/{VERSION}/glibc-dummy-${VERSION}.apk
+          mkdir -p apk/amd64/${VERSION}
+          mkdir -p apk/arm64/${VERSION}
+          touch apk/arm64/${VERSION}/glibc-dummy-${VERSION}.apk
 
       - name: Template APKBUILD for the version we're operating on
         run: |
@@ -90,9 +90,9 @@ jobs:
         # what we're doing here
       - name: Create Docker volumes
         run: |
-          docker create --name input --volume /home/builder/package registry.services.ooflex.net/docker.io/library/alpine:3.18 /bin/true
+          docker create --name input --volume /home/builder/package alpine:3.23 /bin/true
           docker cp . input:/home/builder/package/
-          docker create --name output --volume /packages registry.services.ooflex.net/docker.io/library/alpine:3.18 /bin/true
+          docker create --name output --volume /packages alpine:3.23 /bin/true
           docker cp alpine-packaging-rsa.pub output:/packages/
 
       - name: Build Alpine packages
@@ -102,14 +102,9 @@ jobs:
             --volumes-from input \
             --volumes-from output \
             --volume "${{ github.workspace }}/alpine-packaging-rsa:/home/builder/.abuild/alpine-packaging-rsa" \
-            registry.services.ooflex.net/docker.io/sgerrand/alpine-abuild:3.16
-
-      - name: Test APK installation
-        run: |
-          docker run --rm \
-            --volumes-from output \
-            registry.services.ooflex.net/docker.io/library/alpine:3.18 \
-            sh -c 'cp /packages/alpine-packaging-rsa.pub /etc/apk/keys/ && apk -U add --no-progress --upgrade /packages/builder/x86_64/*.apk && ls -l /usr/glibc-compat/lib && ls -l /lib64 && ls -l /lib64/ld-linux-x86-64.so.2 | grep glibc'
+            --volume "${{ github.workspace }}/alpine-packaging-rsa.pub:/home/builder/.abuild/alpine-packaging-rsa.pub" \
+            --volume "${{ github.workspace }}/alpine-packaging-rsa.pub:/etc/apk/keys/alpine-packaging-rsa.pub" \
+            sgerrand/alpine-abuild:3.20
 
       - name: Extract packages
         run: |
@@ -120,17 +115,27 @@ jobs:
         run: |
           docker rm input output
 
-      - name: Move built packages into their final locations
+      - name: Move built packages into their final locations; git add
         env:
           PACKAGE_BUILD_OUTPUT_DIR: packages/builder/x86_64
           LOCAL_APK_DIR: apk/amd64/${{ env.VERSION }}
           PACKAGE_BUILD_VERSION: ${{ env.VERSION }}-r0
         run: |
-          ls -l ${PACKAGE_BUILD_OUTPUT_DIR}
+          ls -l ${PACKAGE_BUILD_OUTPUT_DIR}/
           mv ${PACKAGE_BUILD_OUTPUT_DIR}/glibc-${PACKAGE_BUILD_VERSION}.apk      ${LOCAL_APK_DIR}/glibc-${VERSION}.apk
           mv ${PACKAGE_BUILD_OUTPUT_DIR}/glibc-bin-${PACKAGE_BUILD_VERSION}.apk  ${LOCAL_APK_DIR}/glibc-bin-${VERSION}.apk
           mv ${PACKAGE_BUILD_OUTPUT_DIR}/glibc-i18n-${PACKAGE_BUILD_VERSION}.apk ${LOCAL_APK_DIR}/glibc-i18n-${VERSION}.apk
+          ls -l ${LOCAL_APK_DIR}
           rm -rf packages
+          git add apk/amd64/${VERSION}/glibc*-${VERSION}.apk apk/arm64/${VERSION}/glibc-dummy-${VERSION}.apk
+
+      - name: Test APK installation, including signature validation
+        run: |
+          docker run --rm \
+            --volume "${{ github.workspace }}/alpine-packaging-rsa.pub:/etc/apk/keys/alpine-packaging-rsa.pub" \
+            --volume "${{ github.workspace }}/apk/amd64/${VERSION}:/packages" \
+            alpine:3.23 \
+            sh -c 'apk -U add --no-progress --upgrade /packages/*.apk && ls -l /usr/glibc-compat/lib && ls -l /lib64 && ls -l /lib64/ld-linux-x86-64.so.2 | grep glibc'; \
 
       - name: Submit new APKs via PR
         uses: peter-evans/create-pull-request@v6
@@ -140,7 +145,27 @@ jobs:
           body: |
             Automated PR to add the binary artifact for glibc version ${{ env.VERSION }}.
           labels: automated
-          add-paths: |
-            apk/amd64/glibc*-${VERSION}.apk
-            apk/arm64/glibc*-dummy.apk
           commit-message: "Add APKs for glibc ${{ env.VERSION }}, packaged and signed by Github Actions"
+
+
+  verify-apk-installations:
+    needs: find-unpackaged-version
+    if: needs.find-unpackaged-version.outputs.packaging_required == ''
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Test APK installation for all versions, including signature validation
+        run: |
+          VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
+          for VERSION in ${VERSIONS[@]}; do \
+            docker run --rm \
+              --volume "${{ github.workspace }}/alpine-packaging-rsa.pub:/etc/apk/keys/alpine-packaging-rsa.pub" \
+              --volume "${{ github.workspace }}/apk/amd64/${VERSION}:/packages" \
+              alpine:3.23 \
+              sh -c 'apk -U add --no-progress --upgrade /packages/*.apk && ls -l /usr/glibc-compat/lib && ls -l /lib64 && ls -l /lib64/ld-linux-x86-64.so.2 | grep glibc'; \
+          done
