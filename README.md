@@ -1,4 +1,4 @@
-## alpine-glibc-packager
+## alpine-glibc
 
 Stores (in Git LFS), and builds when necessary, Alpine glibc packages.
 
@@ -11,7 +11,7 @@ Derived from a combination of:
 
 ## Why is the directory tree the way it is?
 
-... to fill in, explaining why only amd64 support...
+... TODO explain this...
 
 ##  Maintainers: adding a new glibc version
 

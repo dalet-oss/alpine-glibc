@@ -96,8 +96,9 @@ jobs:
       - name: Template APKBUILD for the version we're operating on
         run: |
           cp -v APKBUILD.tmpl APKBUILD
-          sed -i.bak -e "s/VERSION/${VERSION}/g" APKBUILD
-          sed -i.bak -e "s/SHA512SUM/${SHA512}/g" APKBUILD
+          sed -i.bak -e "s/<<TARGETARCH>>/x86_64/g" APKBUILD
+          sed -i.bak -e "s/<<VERSION>>/${VERSION}/g" APKBUILD
+          sed -i.bak -e "s/<<SHA512SUM>>/${SHA512}/g" APKBUILD
           rm APKBUILD.bak
 
       - name: Provision alpine-packaging-rsa key from Github secret, with permissions for the alpine-abuild container to read it
@@ -154,6 +155,8 @@ jobs:
           ls -l ${LOCAL_APK_DIR}
           rm -rf packages
           git add apk/amd64/${VERSION}/glibc*-${VERSION}.apk apk/arm64/${VERSION}/glibc-dummy-${VERSION}.apk
+          git status
+          git diff --cached
 
       - name: Test APK installation, including signature validation
         run: |

@@ -81,6 +81,8 @@ jobs:
           echo "sha512sum for ${AMD64_FILENAME} is ${SHA512}"
           yq e '(.versions[] | select(.glibcVersion == "'"$VERSION"'") | .amd64sha512sum) = "'"$SHA512"'"' -i glibc-versions.yml
           git add ${AMD64_FILENAME} glibc-versions.yml
+          git status
+          git diff --cached
 
       - name: Submit new glibc tarball & its checksum via PR
         uses: peter-evans/create-pull-request@v6
@@ -143,6 +145,8 @@ jobs:
           echo "sha512sum for ${ARM64_FILENAME} is ${SHA512}"
           yq e '(.versions[] | select(.glibcVersio§n == "'"$VERSION"'") | .amd64sha512sum) = "'"$SHA512"'"' -i glibc-versions.yml
           git add ${ARM64_FILENAME} glibc-versions.yml
+          git status
+          git diff --cached
 
       - name: Submit new glibc tarball & its checksum via PR
         uses: peter-evans/create-pull-request@v6
