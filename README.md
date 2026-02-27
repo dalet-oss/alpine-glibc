@@ -1,7 +1,6 @@
 ## alpine-glibc-packager
 
-Stores (in Git LFS), and builds when necessary, Alpine glibc packages for use in builds of our Java base Docker images,
-in the repo `docker-java`.
+Stores (in Git LFS), and builds when necessary, Alpine glibc packages.
 
 Derived from a combination of:
 
