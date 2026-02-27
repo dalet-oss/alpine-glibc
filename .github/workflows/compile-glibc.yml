@@ -104,7 +104,7 @@ jobs:
         run: |
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
           for VERSION in ${VERSIONS[@]}; do \
-            SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"$VERSION"'") | .sha512sum)'); \
+            SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .sha512sum)'); \
             FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"; \
             if [ -f "${FILENAME}" ]; then \
               echo "Version ${VERSION} exists in ${FILENAME}; validating checksum '${SHA512}'..." && \
