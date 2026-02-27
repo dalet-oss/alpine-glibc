@@ -100,6 +100,7 @@ jobs:
           sed -i.bak -e "s/<<VERSION>>/${VERSION}/g" APKBUILD
           sed -i.bak -e "s/<<SHA512SUM>>/${SHA512}/g" APKBUILD
           rm APKBUILD.bak
+          cat APKBUILD
 
       - name: Provision alpine-packaging-rsa key from Github secret, with permissions for the alpine-abuild container to read it
         env:
