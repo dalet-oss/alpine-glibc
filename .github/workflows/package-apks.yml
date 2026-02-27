@@ -183,6 +183,7 @@ jobs:
           ls -l ${PACKAGE_BUILD_OUTPUT_DIR}/
           mv ${PACKAGE_BUILD_OUTPUT_DIR}/glibc-${PACKAGE_BUILD_VERSION}.apk      ${LOCAL_APK_DIR}/glibc-${VERSION}.apk
           mv ${PACKAGE_BUILD_OUTPUT_DIR}/glibc-bin-${PACKAGE_BUILD_VERSION}.apk  ${LOCAL_APK_DIR}/glibc-bin-${VERSION}.apk
+          mv ${PACKAGE_BUILD_OUTPUT_DIR}/glibc-dev-${PACKAGE_BUILD_VERSION}.apk  ${LOCAL_APK_DIR}/glibc-dev-${VERSION}.apk
           mv ${PACKAGE_BUILD_OUTPUT_DIR}/glibc-i18n-${PACKAGE_BUILD_VERSION}.apk ${LOCAL_APK_DIR}/glibc-i18n-${VERSION}.apk
           ls -l ${LOCAL_APK_DIR}
           rm -rf packages
