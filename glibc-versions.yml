@@ -4,7 +4,7 @@ versions:
   - glibcVersion: '2.37'
     sha512sum: 'f95ebccf46a70a4a80d20a62deece85b9fad5fce611642a021c79dbdaca73544fd4f0b4229d71f5d9c763ba159b4a1c013c1b6f5bc21cc8c850298aeabd19e63'
   - glibcVersion: '2.38'
-    sha512sum: 'deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef012345678900'
+    sha512sum: 'ba6ae91836e379c2fc280ed9aee51701970f2a26152a6707b8fab79e26e7eb0356ea3f19d410db45ec9aa9d590f605ebd587ef5a69f62fdccd6182dda68561e5'
   - glibcVersion: '2.39'
     sha512sum: 'deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef012345678900'
   - glibcVersion: '2.40'
