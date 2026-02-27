@@ -57,7 +57,7 @@ jobs:
             if [ -f "${BASE_APK_FILENAME}" ]; then \
               echo "Version ${VERSION} already exists in ${BASE_APK_FILENAME}"; \
             else \
-              SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .sha512sum)'); \
+              SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .amd64sha512sum)'); \
               echo "Version ${VERSION} with sha512sum '${SHA512}' has not been packaged yet" && \
               if [ ! -f "${GLIBC_TARBALL}" ]; then \
                 echo "Source ${GLIBC_TARBALL} is not available - bombing out here until compile-glibc workflows have all been resolved and PRs merged" && false
