@@ -8,6 +8,7 @@ on:
     paths:
       - .github/**
       - glibc-versions.yml
+      - glibc/*.tar.gz
 
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -30,7 +31,6 @@ jobs:
       - id: parse
         name: Parse glibc-versions.yml
         run: |
-          rm -f compile-required.txt
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
           for VERSION in ${VERSIONS[@]}; do \
             FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"; \
@@ -47,6 +47,8 @@ jobs:
     needs: find-uncompiled-version
     if: needs.find-uncompiled-version.outputs.compile_required != ''
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       VERSION: ${{ needs.find-uncompiled-version.outputs.compile_required }}
       FILENAME: glibc/glibc-bin-${{ needs.find-uncompiled-version.outputs.compile_required }}-x86_64.tar.gz
@@ -57,25 +59,30 @@ jobs:
         with:
           lfs: true
 
-      - name: Compile glibc
+      - name: Ensure output directory is present
         run: |
           mkdir -p glibc
+
+      - name: Compile glibc
+        run: |
           docker run --rm --env STDOUT=1 sgerrand/glibc-builder ${VERSION} /usr/glibc-compat > ${FILENAME}
 
       - name: Show output file, determine checksum; update checksum in glibc-versions.yml
         run: |
+          set -x
           ls -l ${FILENAME}
           NEW_SHA512=$(sha512sum ${FILENAME})
           echo "sha512sum for ${FILENAME} is ${NEW_SHA512}"
           yq e '(.versions[] | select(.glibcVersion == "'"$VERSION"'") | .sha512sum) = "'"$NEW_SHA512"'"' -i glibc-versions.yml
+          git add glibc/glibc-bin-${VERSION}-x86_64.tar.gz glibc-versions.yml
           git status
-          git diff
+          git diff --cached
 
       - name: Commit glibc tarball & its checksum
         run: |
+          set -x
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add glibc/glibc-bin-${VERSION}-x86_64.tar.gz glibc-versions.yml
           git diff --staged --quiet || git commit -m "Add glibc bin for ${VERSION}, compiled by Github Actions"
           git push
 
@@ -92,7 +99,6 @@ jobs:
 
       - name: Check glibc checksums
         run: |
-          rm -f compile-required.txt
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
           for VERSION in ${VERSIONS[@]}; do \
             SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"$VERSION"'") | .sha512sum)'); \
