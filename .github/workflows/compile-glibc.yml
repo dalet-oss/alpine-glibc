@@ -1,0 +1,106 @@
+name: 'Compile glibc'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/**
+      - glibc-versions.yml
+
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: false
+
+
+jobs:
+
+  find-uncompiled-version:
+    runs-on: ubuntu-latest
+    outputs:
+      compile_required: ${{ steps.parse.outputs.compile_required }}
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - id: parse
+        name: Parse glibc-versions.yml
+        run: |
+          rm -f compile-required.txt
+          VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
+          for VERSION in ${VERSIONS[@]}; do \
+            FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"; \
+            if [ -f "${FILENAME}" ]; then \
+              echo "Version ${VERSION} already exists in ${FILENAME}"; \
+            else \
+              echo "Version ${VERSION} has not been compiled yet" && \
+              echo "compile_required=${VERSION}" >${GITHUB_OUTPUT} && break; \
+            fi; \
+          done
+
+
+  compile-glibc:
+    needs: find-uncompiled-version
+    if: needs.find-uncompiled-version.outputs.compile_required != ''
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.find-uncompiled-version.outputs.compile_required }}
+      FILENAME: glibc/glibc-bin-${{ needs.find-uncompiled-version.outputs.compile_required }}-x86_64.tar.gz
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Compile glibc
+        run: |
+          mkdir -p glibc
+          docker run --rm --env STDOUT=1 sgerrand/glibc-builder ${VERSION} /usr/glibc-compat > ${FILENAME}
+
+      - name: Show output file, determine checksum; update checksum in glibc-versions.yml
+        run: |
+          ls -l ${FILENAME}
+          NEW_SHA512=$(sha512sum ${FILENAME})
+          echo "sha512sum for ${FILENAME} is ${NEW_SHA512}"
+          yq e '(.versions[] | select(.glibcVersion == "'"$VERSION"'") | .sha512sum) = "'"$NEW_SHA512"'"' -i glibc-versions.yml
+          git status
+          git diff
+
+      - name: Commit glibc tarball & its checksum
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add glibc/glibc-bin-${VERSION}-x86_64.tar.gz glibc-versions.yml
+          git diff --staged --quiet || git commit -m "Add glibc bin for ${VERSION}, compiled by Github Actions"
+          git push
+
+  check-glibc-checksums:
+    needs: find-uncompiled-version
+    if: needs.find-uncompiled-version.outputs.compile_required == ''
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Check glibc checksums
+        run: |
+          rm -f compile-required.txt
+          VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
+          for VERSION in ${VERSIONS[@]}; do \
+            SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"$VERSION"'") | .sha512sum)'); \
+            FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"; \
+            if [ -f "${FILENAME}" ]; then \
+              echo "Version ${VERSION} exists in ${FILENAME}; validating checksum '${SHA512}'..." && \
+              echo "${SHA512}  ${FILENAME}" | sha512sum --check; \
+            else \
+              echo "Version ${VERSION} is MISSING - this is unexpected" && false; \
+            fi; \
+          done
