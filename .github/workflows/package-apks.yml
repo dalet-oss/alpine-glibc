@@ -55,9 +55,9 @@ jobs:
         name: Find the first unpackaged version (if any exists)
         run: |
           for VERSION in ${VERSIONS[@]}; do \
-            BASE_APK_FILENAME="./apk/amd64/${VERSION}/glibc-${VERSION}.apk"; \
-            if [ -f "${BASE_APK_FILENAME}" ]; then \
-              echo "Version ${VERSION} already exists in ${BASE_APK_FILENAME}"; \
+            if [ "$(ls ./apk/*/${VERSION}/*.apk 2>/dev/null | wc -l)" -eq 8 ]; then \
+              echo "Version ${VERSION} already has 8 APKs packaged:" && \
+              ls ./apk/*/${VERSION}/*.apk; \
             else \
               echo "Version ${VERSION} has not been packaged yet" && \
               AMD64_FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"; \
