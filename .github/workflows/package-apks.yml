@@ -253,7 +253,7 @@ jobs:
     needs:
       - discover-versions
       - find-unpackaged-version
-    if: needs.find-unpackaged-version.outputs.packaging_required == ''
+    if: needs.find-unpackaged-version.outputs.packaging_required == '' && false # TODO temporarily disabled to save LFS usage
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -262,9 +262,8 @@ jobs:
         version: ${{ fromJson(needs.discover-versions.outputs.unreleased_versions_json) }}
     steps:
       - uses: actions/checkout@v4
-        # TODO: put this back in, to make the releases actually meaningful!
-#        with:
-#          lfs: true
+        with:
+          lfs: true
 
       - name: Set env vars
         run: |
