@@ -255,6 +255,8 @@ jobs:
       - find-unpackaged-version
     if: needs.find-unpackaged-version.outputs.packaging_required == ''
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     strategy:
       matrix:
         version: ${{ fromJson(needs.discover-versions.outputs.unreleased_versions_json) }}
@@ -273,9 +275,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "${{ matrix.version }}"
-          name: "${VERSION} (${TARGETARCH})"
+          name: "${{ env.VERSION }} (${{ env.TARGETARCH }})"
           body: |
-            Version ${VERSION} of the GNU C library, glibc, built for Alpine with ${TARGETARCH} CPU architecture.
+            Version ${{ env.VERSION }} of the GNU C library, glibc, built for Alpine with ${{ env.TARGETARCH }} CPU architecture.
           files: |
-            apk/${TARGETARCH}/${VERSION}/glibc*-${VERSION}.apk
+            apk/${{ env.TARGETARCH }}/${{ env.VERSION }}/glibc*-${{ env.VERSION }}.apk
           token: ${{ secrets.GITHUB_TOKEN }}
