@@ -1,14 +1,16 @@
 name: 'Package APKs'
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - master
-    paths:
-      - .github/workflows/package-apks.yml
-      - glibc-versions.yml
-      - glibc/*.tar.gz
+#  Temporarily disable automatic triggering to limit LFS usage while we catch up with building past versions,
+#  to reduce LFS usage so we don't hit the 10GB per month limit
+#on:
+#  workflow_dispatch:
+#  push:
+#    branches:
+#      - master
+#    paths:
+#      - .github/workflows/package-apks.yml
+#      - glibc-versions.yml
+#      - glibc/*.tar.gz
 
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -21,16 +23,24 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       versions: ${{ steps.discover-versions.outputs.versions }}
-      versions_json: ${{ steps.discover-versions.outputs.versions_json }}
+      unreleased_versions_json: ${{ steps.discover-versions.outputs.unreleased_versions_json }}
     steps:
       - uses: actions/checkout@v4
+
       - name: Discover versions
         id: discover-versions
+#        env:
+#          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
-          VERSIONS_JSON=$(echo ${VERSIONS} | jq  -Rc 'split(" ")')
+          UNRELEASED_VERSIONS=''
+          for VERSION in ${VERSIONS[@]}; do
+            gh release view "${VERSION}-amd64" &>/dev/null || UNRELEASED_VERSIONS="${UNRELEASED_VERSIONS} ${VERSION}-amd64"
+            gh release view "${VERSION}-arm64" &>/dev/null || UNRELEASED_VERSIONS="${UNRELEASED_VERSIONS} ${VERSION}-arm64"
+          done
+          UNRELEASED_VERSIONS_JSON=$(echo ${UNRELEASED_VERSIONS} | jq  -Rc 'split(" ")')
           echo versions=${VERSIONS} > ${GITHUB_OUTPUT}
-          echo versions_json=${VERSIONS_JSON} >> ${GITHUB_OUTPUT}
+          echo unreleased_versions_json=${UNRELEASED_VERSIONS_JSON} >> ${GITHUB_OUTPUT}
 
 
   find-unpackaged-version:
@@ -45,35 +55,31 @@ jobs:
       amd64_sha512: ${{ steps.find.outputs.amd64_sha512 }}
       arm64_sha512: ${{ steps.find.outputs.arm64_sha512 }}
     steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          lfs: true
+      - uses: actions/checkout@v4
 
       - id: find
         name: Find the first unpackaged version (if any exists)
         run: |
-          for VERSION in ${VERSIONS[@]}; do \
-            if [ "$(ls ./apk/*/${VERSION}/*.apk 2>/dev/null | wc -l)" -eq 8 ]; then \
-              echo "Version ${VERSION} already has 8 APKs packaged:" && \
-              ls ./apk/*/${VERSION}/*.apk; \
-            else \
-              echo "Version ${VERSION} has not been packaged yet" && \
-              AMD64_FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"; \
-              ARM64_FILENAME="./glibc/glibc-bin-${VERSION}-aarch64.tar.gz"; \
-              AMD64_SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .amd64sha512sum)'); \
-              ARM64_SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .arm64sha512sum)'); \
-              if [ ! -f "${AMD64_FILENAME}" ] || [ ! -f "${ARM64_FILENAME}" ]; then \
+          for VERSION in ${VERSIONS[@]}; do
+            if [ "$(ls ./apk/*/${VERSION}/*.apk 2>/dev/null | wc -l)" -eq 8 ]; then
+              echo "Version ${VERSION} already has 8 APKs packaged:"
+              ls ./apk/*/${VERSION}/*.apk
+            else
+              echo "Version ${VERSION} has not been packaged yet"
+              AMD64_FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"
+              ARM64_FILENAME="./glibc/glibc-bin-${VERSION}-aarch64.tar.gz"
+              AMD64_SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .amd64sha512sum)')
+              ARM64_SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .arm64sha512sum)')
+              if [ ! -f "${AMD64_FILENAME}" ] || [ ! -f "${ARM64_FILENAME}" ]; then
                 echo "Missing either ${AMD64_FILENAME} or ${ARM64_FILENAME} - bombing out here until compile-glibc workflows have all been resolved and PRs merged" && false
               fi
-              echo "packaging_required=${VERSION}" > ${GITHUB_OUTPUT} && \
-              echo "amd64_filename=${AMD64_FILENAME}" >> ${GITHUB_OUTPUT} && \
-              echo "arm64_filename=${ARM64_FILENAME}" >> ${GITHUB_OUTPUT} && \
-              echo "amd64_sha512=${AMD64_SHA512}" >> ${GITHUB_OUTPUT} && \
-              echo "arm64_sha512=${ARM64_SHA512}" >> ${GITHUB_OUTPUT} && \
-              break; \
-            fi; \
+              echo "packaging_required=${VERSION}" > ${GITHUB_OUTPUT}
+              echo "amd64_filename=${AMD64_FILENAME}" >> ${GITHUB_OUTPUT}
+              echo "arm64_filename=${ARM64_FILENAME}" >> ${GITHUB_OUTPUT}
+              echo "amd64_sha512=${AMD64_SHA512}" >> ${GITHUB_OUTPUT}
+              echo "arm64_sha512=${ARM64_SHA512}" >> ${GITHUB_OUTPUT}
+              break
+            fi
           done
 
 
@@ -105,9 +111,7 @@ jobs:
       SHA512: ${{ matrix.sha512 }}
       LIBFILE: ${{ matrix.libfile }}
     steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           lfs: true
 
@@ -198,7 +202,7 @@ jobs:
             --volume "${{ github.workspace }}/alpine-packaging-rsa.pub:/etc/apk/keys/alpine-packaging-rsa.pub" \
             --volume "${{ github.workspace }}/apk/${TARGETARCH}/${VERSION}:/packages" \
             alpine:3.23 \
-            sh -c 'apk -U add --no-progress --upgrade /packages/*.apk && ls -l /usr/glibc-compat/lib && ls -l /lib64 && ls -l /lib64/${LIBFILE} | grep glibc'; \
+            sh -c 'apk -U add --no-progress --upgrade /packages/*.apk && ls -l /usr/glibc-compat/lib && ls -l /lib64 && ls -l /lib64/${LIBFILE} | grep glibc'
 
       - name: Submit new APKs via PR
         uses: peter-evans/create-pull-request@v6
@@ -215,7 +219,7 @@ jobs:
     needs:
       - discover-versions
       - find-unpackaged-version
-    if: needs.find-unpackaged-version.outputs.packaging_required == ''
+    if: needs.find-unpackaged-version.outputs.packaging_required == '' && false # TODO temporarily disabled to save LFS usage
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -229,55 +233,49 @@ jobs:
       TARGETARCH: ${{ matrix.targetarch }}
       LIBFILE: ${{ matrix.libfile }}
     steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           lfs: true
 
       - name: Test APK installation for all versions, including signature validation
         run: |
-          for VERSION in ${VERSIONS[@]}; do \
+          for VERSION in ${VERSIONS[@]}; do
             docker run --rm \
               --platform linux/${TARGETARCH} \
               --volume "${{ github.workspace }}/alpine-packaging-rsa.pub:/etc/apk/keys/alpine-packaging-rsa.pub" \
               --volume "${{ github.workspace }}/apk/${TARGETARCH}/${VERSION}:/packages" \
               alpine:3.23 \
-              sh -c 'apk -U add --no-progress --upgrade /packages/*.apk && ls -l /usr/glibc-compat/lib && ls -l /lib64 && ls -l /lib64/${LIBFILE} | grep glibc'; \
+              sh -c 'apk -U add --no-progress --upgrade /packages/*.apk && ls -l /usr/glibc-compat/lib && ls -l /lib64 && ls -l /lib64/${LIBFILE} | grep glibc'
           done
 
 
-  publish-releases:
+  publish-new-releases:
     needs:
       - discover-versions
       - find-unpackaged-version
-    if: needs.find-unpackaged-version.outputs.packaging_required == '' && false # temporarily disabled while investigating the possibility of introducing ARM64 support
+    if: needs.find-unpackaged-version.outputs.packaging_required == ''
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version: ${{ fromJson(needs.discover-versions.outputs.versions_json) }}
+        version: ${{ fromJson(needs.discover-versions.outputs.unreleased_versions_json) }}
     steps:
+      - uses: actions/checkout@v4
+        # TODO: put this back in, to make the releases actually meaningful!
+#        with:
+#          lfs: true
 
-      - id: check-release
-        name: Check if release exists
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set env vars
         run: |
-          if gh release view "v${{ matrix.version }}" &>/dev/null; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+          echo "VERSION=$(echo ${{ matrix.version }} | cut -d'-' -f1)" >> "$GITHUB_ENV"
+          echo "TARGETARCH=$(echo ${{ matrix.version }} | cut -d'-' -f2)" >> "$GITHUB_ENV"
 
       - name: Create Release
-        if: steps.check-release.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "${{ matrix.version }}-r0"
-          name: "${{ matrix.version }}-r0"
+          tag_name: "${{ matrix.version }}"
+          name: "${VERSION} (${TARGETARCH})"
           body: |
-            Version ${{ matrix.version }} of the GNU C library, glibc.
-          # TODO: multi-architecture this little lot
+            Version ${VERSION} of the GNU C library, glibc, built for Alpine with ${TARGETARCH} CPU architecture.
           files: |
-            apk/amd64/${{ matrix.version }}/glibc*-${{ matrix.version }}.apk
+            apk/${TARGETARCH}/${VERSION}/glibc*-${VERSION}.apk
           token: ${{ secrets.GITHUB_TOKEN }}

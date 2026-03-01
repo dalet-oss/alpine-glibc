@@ -1,14 +1,16 @@
 name: 'Compile glibc'
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - master
-    paths:
-      - .github/workflows/compile-glibc.yml
-      - glibc-versions.yml
-      - glibc/*.tar.gz
+#  Temporarily disable automatic triggering to limit LFS usage while we catch up with building past versions,
+#  to reduce LFS usage so we don't hit the 10GB per month limit
+#on:
+#  workflow_dispatch:
+#  push:
+#    branches:
+#      - master
+#    paths:
+#      - .github/workflows/compile-glibc.yml
+#      - glibc-versions.yml
+#      - glibc/*.tar.gz
 
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -24,28 +26,24 @@ jobs:
       amd64_required: ${{ steps.parse.outputs.amd64_required }}
       arm64_required: ${{ steps.parse.outputs.arm64_required }}
     steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          lfs: true
+      - uses: actions/checkout@v4
 
       - id: parse
         name: Parse glibc-versions.yml
         run: |
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
-          for VERSION in ${VERSIONS[@]}; do \
-            AMD64_FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"; \
-            ARM64_FILENAME="./glibc/glibc-bin-${VERSION}-aarch64.tar.gz"; \
-            if [ -f "${AMD64_FILENAME}" ] && [ -f "${ARM64_FILENAME}" ]; then \
-              echo "Version ${VERSION} already exists in ${AMD64_FILENAME} and ${ARM64_FILENAME}"; \
-            else \
-              echo "Version ${VERSION} has not been compiled for both architectures yet" && \
-              echo "compile_required=${VERSION}" > ${GITHUB_OUTPUT} && \
-              [ -f "${AMD64_FILENAME}" ] || echo "amd64_required=${AMD64_FILENAME}" >> ${GITHUB_OUTPUT} && \
-              [ -f "${ARM64_FILENAME}" ] || echo "arm64_required=${ARM64_FILENAME}" >> ${GITHUB_OUTPUT} && \
-              break; \
-            fi; \
+          for VERSION in ${VERSIONS[@]}; do
+            AMD64_FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"
+            ARM64_FILENAME="./glibc/glibc-bin-${VERSION}-aarch64.tar.gz"
+            if [ -f "${AMD64_FILENAME}" ] && [ -f "${ARM64_FILENAME}" ]; then
+              echo "Version ${VERSION} already exists in ${AMD64_FILENAME} and ${ARM64_FILENAME}"
+            else
+              echo "Version ${VERSION} has not been compiled for both architectures yet"
+              echo "compile_required=${VERSION}" > ${GITHUB_OUTPUT}
+              [ -f "${AMD64_FILENAME}" ] || echo "amd64_required=${AMD64_FILENAME}" >> ${GITHUB_OUTPUT}
+              [ -f "${ARM64_FILENAME}" ] || echo "arm64_required=${ARM64_FILENAME}" >> ${GITHUB_OUTPUT}
+              break
+            fi
           done
 
 
@@ -60,9 +58,7 @@ jobs:
       VERSION: ${{ needs.find-uncompiled-version.outputs.compile_required }}
       AMD64_FILENAME: ${{ needs.find-uncompiled-version.outputs.amd64_required }}
     steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           lfs: true
 
@@ -163,33 +159,31 @@ jobs:
 
   verify-all-glibc-checksums:
     needs: find-uncompiled-version
-    if: needs.find-uncompiled-version.outputs.compile_required == ''
+    if: needs.find-uncompiled-version.outputs.compile_required == '' && false # TODO temporarily disabled to save LFS usage
     runs-on: ubuntu-latest
     steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           lfs: true
 
       - name: Verify all glibc checksums
         run: |
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
-          for VERSION in ${VERSIONS[@]}; do \
-            AMD64_FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"; \
-            ARM64_FILENAME="./glibc/glibc-bin-${VERSION}-aarch64.tar.gz"; \
-            AMD64_SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .amd64sha512sum)'); \
-            ARM64_SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .arm64sha512sum)'); \
-            if [ -f "${AMD64_FILENAME}" ]; then \
-              echo "Version ${VERSION} exists in ${AMD64_FILENAME}; validating checksum '${AMD64_SHA512}'..." && \
-              echo "${AMD64_SHA512}  ${AMD64_FILENAME}" | sha512sum --check; \
-            else \
-              echo "Version ${VERSION} is missing file ${AMD64_FILENAME} - this is unexpected" && false; \
-            fi; \
-            if [ -f "${ARM64_FILENAME}" ]; then \
-              echo "Version ${VERSION} exists in ${ARM64_FILENAME}; validating checksum '${ARM64_SHA512}'..." && \
-              echo "${ARM64_SHA512}  ${ARM64_FILENAME}" | sha512sum --check; \
-            else \
-              echo "Version ${VERSION} is missing file ${ARM64_FILENAME}  - this is unexpected" && false; \
-            fi; \
+          for VERSION in ${VERSIONS[@]}; do
+            AMD64_FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"
+            ARM64_FILENAME="./glibc/glibc-bin-${VERSION}-aarch64.tar.gz"
+            AMD64_SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .amd64sha512sum)')
+            ARM64_SHA512=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .arm64sha512sum)')
+            if [ -f "${AMD64_FILENAME}" ]; then
+              echo "Version ${VERSION} exists in ${AMD64_FILENAME}; validating checksum '${AMD64_SHA512}'..."
+              echo "${AMD64_SHA512}  ${AMD64_FILENAME}" | sha512sum --check
+            else
+              echo "Version ${VERSION} is missing file ${AMD64_FILENAME} - this is unexpected" && false
+            fi
+            if [ -f "${ARM64_FILENAME}" ]; then
+              echo "Version ${VERSION} exists in ${ARM64_FILENAME}; validating checksum '${ARM64_SHA512}'..."
+              echo "${ARM64_SHA512}  ${ARM64_FILENAME}" | sha512sum --check
+            else
+              echo "Version ${VERSION} is missing file ${ARM64_FILENAME}  - this is unexpected" && false
+            fi
           done
