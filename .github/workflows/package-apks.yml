@@ -1,9 +1,9 @@
 name: 'Package APKs'
 
+on:
+  workflow_dispatch:
 #  Temporarily disable automatic triggering to limit LFS usage while we catch up with building past versions,
 #  to reduce LFS usage so we don't hit the 10GB per month limit
-#on:
-#  workflow_dispatch:
 #  push:
 #    branches:
 #      - master
