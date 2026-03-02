@@ -249,11 +249,13 @@ jobs:
     needs:
       - discover-versions
       - find-unpackaged-version
-    if: needs.find-unpackaged-version.outputs.packaging_required == '' && false # TODO temporarily disabled to save LFS usage
+    if: needs.find-unpackaged-version.outputs.packaging_required == ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
     strategy:
+      # avoid parallelising, just to ensure ordering
+      max-parallel: 1
       matrix:
         version: ${{ fromJson(needs.discover-versions.outputs.unreleased_versions_json) }}
     steps:
@@ -263,8 +265,8 @@ jobs:
 
       - name: Set env vars
         run: |
-          echo "VERSION=$(echo ${{ matrix.version }} | cut -d'-' -f1)" >> "$GITHUB_ENV"
-          echo "TARGETARCH=$(echo ${{ matrix.version }} | cut -d'-' -f2)" >> "$GITHUB_ENV"
+          echo "VERSION=$(echo ${{ matrix.version }} | cut -d'-' -f1)" >> ${GITHUB_ENV}
+          echo "TARGETARCH=$(echo ${{ matrix.version }} | cut -d'-' -f2)" >> ${GITHUB_ENV}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
