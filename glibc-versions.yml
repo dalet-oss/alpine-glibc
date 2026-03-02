@@ -14,6 +14,9 @@ versions:
   - glibcVersion: '2.40'
     amd64sha512sum: '12103ec23f5c1e4c39368392c055a27d4abb9ea428ff0d0925e2bf87eb1b739126c08dbafab7f0f6ac415186af9c15bd648a8731193be24493723f50d9af696c'
     arm64sha512sum: '56fc8b5b108aef4dc77cd6486bab78b2134d778b8f54af1bb71790d48648fd7b94b75e5cf0bbcad810ebaa711374803b5d9e5ddcfe41e6b31b95790ef2a2d013'
+  - glibcVersion: '2.41'
+    amd64sha512sum: 'deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef012345678900'
+    arm64sha512sum: 'deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef012345678900'
 ## Copy-and-paste the block below when adding a new version to the list above.
 #  - glibcVersion: '2.xx'
 #    amd64sha512sum: 'deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef012345678900'
