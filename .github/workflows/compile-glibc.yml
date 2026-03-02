@@ -87,6 +87,8 @@ jobs:
       - name: Create up-to-date docker-image for docker-glibc-builder, on ${{ env.TARGETARCH }}; remove source directory
         run: |
           cd .glibc-builder
+          sed -i.bak -e "s/22.04/24.04/g" Dockerfile
+          rm Dockerfile.bak
           docker build --platform linux/${TARGETARCH} -t latest-glibc-builder-${TARGETARCH} .
           cd ..
           rm -rf .glibc-builder
