@@ -2,15 +2,12 @@ name: 'Compile glibc'
 
 on:
   workflow_dispatch:
-#  Temporarily disable automatic triggering to limit LFS usage while we catch up with building past versions,
-#  to reduce LFS usage so we don't hit the 10GB per month limit
-#  push:
-#    branches:
-#      - master
-#    paths:
-#      - .github/workflows/compile-glibc.yml
-#      - glibc-versions.yml
-#      - glibc/*.tar.gz
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/compile-glibc.yml
+      - glibc-versions.yml
 
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'

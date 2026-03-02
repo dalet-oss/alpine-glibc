@@ -2,15 +2,12 @@ name: 'Package APKs'
 
 on:
   workflow_dispatch:
-#  Temporarily disable automatic triggering to limit LFS usage while we catch up with building past versions,
-#  to reduce LFS usage so we don't hit the 10GB per month limit
-#  push:
-#    branches:
-#      - master
-#    paths:
-#      - .github/workflows/package-apks.yml
-#      - glibc-versions.yml
-#      - glibc/*.tar.gz
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/package-apks.yml
+      - glibc/*aarch64.tar.gz # We expect the x86_64 (amd64) glibc archive to be merged first
 
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -29,8 +26,6 @@ jobs:
 
       - name: Discover versions
         id: discover-versions
-#        env:
-#          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
           UNRELEASED_VERSIONS=''
