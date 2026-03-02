@@ -90,16 +90,16 @@ jobs:
     strategy:
       matrix:
         include:
-          - arch: x86_64
-            targetarch: amd64
-            libfile: ld-linux-x86-64.so.2
-            filename: ${{ needs.find-unpackaged-version.outputs.amd64_filename }}
-            sha512: ${{ needs.find-unpackaged-version.outputs.amd64_sha512 }}
-#          - arch: aarch64
-#            targetarch: arm64
-#            libfile: ld-linux-aarch64.so.1
-#            filename: ${{ needs.find-unpackaged-version.outputs.arm64_filename }}
-#            sha512: ${{ needs.find-unpackaged-version.outputs.arm64_sha512 }}
+#          - arch: x86_64
+#            targetarch: amd64
+#            libfile: ld-linux-x86-64.so.2
+#            filename: ${{ needs.find-unpackaged-version.outputs.amd64_filename }}
+#            sha512: ${{ needs.find-unpackaged-version.outputs.amd64_sha512 }}
+          - arch: aarch64
+            targetarch: arm64
+            libfile: ld-linux-aarch64.so.1
+            filename: ${{ needs.find-unpackaged-version.outputs.arm64_filename }}
+            sha512: ${{ needs.find-unpackaged-version.outputs.arm64_sha512 }}
     permissions:
       contents: write
       pull-requests: write
