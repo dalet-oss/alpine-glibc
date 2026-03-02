@@ -95,11 +95,11 @@ jobs:
             libfile: ld-linux-x86-64.so.2
             filename: ${{ needs.find-unpackaged-version.outputs.amd64_filename }}
             sha512: ${{ needs.find-unpackaged-version.outputs.amd64_sha512 }}
-          - arch: aarch64
-            targetarch: arm64
-            libfile: ld-linux-aarch64.so.1
-            filename: ${{ needs.find-unpackaged-version.outputs.arm64_filename }}
-            sha512: ${{ needs.find-unpackaged-version.outputs.arm64_sha512 }}
+#          - arch: aarch64
+#            targetarch: arm64
+#            libfile: ld-linux-aarch64.so.1
+#            filename: ${{ needs.find-unpackaged-version.outputs.arm64_filename }}
+#            sha512: ${{ needs.find-unpackaged-version.outputs.arm64_sha512 }}
     permissions:
       contents: write
       pull-requests: write
@@ -123,8 +123,9 @@ jobs:
         run: |
           cp -v APKBUILD.tmpl APKBUILD
           sed -i.bak -e "s/<<ARCH>>/${ARCH}/g" APKBUILD
-          sed -i.bak -e "s/<<VERSION>>/${VERSION}/g" APKBUILD
+          sed -i.bak -e "s/<<LIBFILE>>/${LIBFILE}/g" APKBUILD
           sed -i.bak -e "s/<<SHA512SUM>>/${SHA512}/g" APKBUILD
+          sed -i.bak -e "s/<<VERSION>>/${VERSION}/g" APKBUILD
           rm APKBUILD.bak
           cat APKBUILD
 

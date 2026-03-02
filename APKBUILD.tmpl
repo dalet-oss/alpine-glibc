@@ -11,7 +11,7 @@ pkgdesc="GNU C Library compatibility layer"
 arch="<<ARCH>>"
 url="https://github.com/dalet-oss/alpine-glibc"
 license="LGPL"
-source="glibc/glibc-bin-${pkgver}-${arch}.tar.gz
+source="glibc/glibc-bin-$pkgver-<<ARCH>>.tar.gz
 ld.so.conf"
 subpackages="$pkgname-bin $pkgname-dev $pkgname-i18n"
 triggers="$pkgname-bin.trigger=/lib:/usr/lib:/usr/glibc-compat/lib"
@@ -29,9 +29,9 @@ package() {
   rm -rf "$pkgdir"/usr/glibc-compat/lib/audit
   rm -rf "$pkgdir"/usr/glibc-compat/share
   rm -rf "$pkgdir"/usr/glibc-compat/var
-  ln -s /usr/glibc-compat/lib/ld-linux-${arch}.so.2 ${pkgdir}/lib/ld-linux-${arch}.so.2
-  ln -s /usr/glibc-compat/lib/ld-linux-${arch}.so.2 ${pkgdir}/lib64/ld-linux-${arch}.so.2
-  ln -s /usr/glibc-compat/lib/ld-linux-${arch}.so.2 ${pkgdir}/usr/glibc-compat/lib64/ld-linux-${arch}.so.2
+  ln -s /usr/glibc-compat/lib/<<LIBFILE>> ${pkgdir}/lib/<<LIBFILE>>
+  ln -s /usr/glibc-compat/lib/<<LIBFILE>> ${pkgdir}/lib64/<<LIBFILE>>
+  ln -s /usr/glibc-compat/lib/<<LIBFILE>> ${pkgdir}/usr/glibc-compat/lib64/<<LIBFILE>>
   ln -s /usr/glibc-compat/etc/ld.so.cache ${pkgdir}/etc/ld.so.cache
 }
 
