@@ -215,7 +215,7 @@ jobs:
     needs:
       - discover-versions
       - find-unpackaged-version
-    if: needs.find-unpackaged-version.outputs.packaging_required == '' && false # TODO temporarily disabled to save LFS usage
+    if: needs.find-unpackaged-version.outputs.packaging_required == ''
     runs-on: ubuntu-latest
     strategy:
       matrix:

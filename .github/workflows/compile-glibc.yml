@@ -84,6 +84,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Hopefully https://github.com/sgerrand/docker-glibc-builder/issues/63 will get resolved, allowing at least some
+      # of the noise here to be removed - ideally the whole of this step and the one above which checks out this repo
       - name: Create up-to-date docker-image for docker-glibc-builder, on ${{ env.TARGETARCH }}; remove source directory
         run: |
           cd .glibc-builder
@@ -120,7 +122,7 @@ jobs:
 
   verify-all-glibc-checksums:
     needs: find-uncompiled-version
-    if: needs.find-uncompiled-version.outputs.compile_required == '' && false # TODO temporarily disabled to save LFS usage
+    if: needs.find-uncompiled-version.outputs.compile_required == ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
