@@ -27,7 +27,7 @@ jobs:
         name: Discover versions
         run: |
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
-          echo "versions=${VERSIONS}" >> ${GITHUB_OUTPUT}
+          echo ersions=${VERSIONS >> ${GITHUB_OUTPUT}
 
 
   find-first-uncompiled-version:
@@ -54,14 +54,14 @@ jobs:
             fi
             if [ ! -f "${AMD64_FILENAME}" ]; then
               echo "Version ${VERSION} has not been compiled for amd64 yet"
-              echo "compile_required=${VERSION}" >> ${GITHUB_OUTPUT}
-              echo "filename=${AMD64_FILENAME}" >> ${GITHUB_OUTPUT}
-              echo "targetarch=amd64" >> ${GITHUB_OUTPUT}
+              echo compile_required=${VERSION} >> ${GITHUB_OUTPUT}
+              echo filename=${AMD64_FILENAME} >> ${GITHUB_OUTPUT}
+              echo targetarch=amd64 >> ${GITHUB_OUTPUT}
             else
               echo "Version ${VERSION} has not been compiled for arm64 yet"
-              echo "compile_required=${VERSION}" >> ${GITHUB_OUTPUT}
-              echo "filename=${ARM64_FILENAME}" >> ${GITHUB_OUTPUT}
-              echo "targetarch=arm64" >> ${GITHUB_OUTPUT}
+              echo compile_required=${VERSION} >> ${GITHUB_OUTPUT}
+              echo filename=${ARM64_FILENAME} >> ${GITHUB_OUTPUT}
+              echo targetarch=arm64 >> ${GITHUB_OUTPUT}
               break
             fi
           done

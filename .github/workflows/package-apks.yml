@@ -69,11 +69,11 @@ jobs:
               if [ ! -f "${AMD64_FILENAME}" ] || [ ! -f "${ARM64_FILENAME}" ]; then
                 echo "Missing either ${AMD64_FILENAME} or ${ARM64_FILENAME} - bombing out here until compile-glibc workflows have all been resolved and PRs merged" && false
               fi
-              echo "packaging_required=${VERSION}" >> ${GITHUB_OUTPUT}
-              echo "amd64_filename=${AMD64_FILENAME}" >> ${GITHUB_OUTPUT}
-              echo "arm64_filename=${ARM64_FILENAME}" >> ${GITHUB_OUTPUT}
-              echo "amd64_sha512=${AMD64_SHA512}" >> ${GITHUB_OUTPUT}
-              echo "arm64_sha512=${ARM64_SHA512}" >> ${GITHUB_OUTPUT}
+              echo packaging_required=${VERSION} >> ${GITHUB_OUTPUT}
+              echo amd64_filename=${AMD64_FILENAME} >> ${GITHUB_OUTPUT}
+              echo arm64_filename=${ARM64_FILENAME} >> ${GITHUB_OUTPUT}
+              echo amd64_sha512=${AMD64_SHA512} >> ${GITHUB_OUTPUT}
+              echo arm64_sha512=${ARM64_SHA512} >> ${GITHUB_OUTPUT}
               break
             fi
           done
