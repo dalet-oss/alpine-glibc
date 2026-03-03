@@ -46,6 +46,7 @@ jobs:
 
   publish-new-releases:
     needs: discover-unreleased-versions
+    if: needs.discover-unreleased-versions.outputs.unreleased_versions_json != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: write
