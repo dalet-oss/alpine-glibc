@@ -27,7 +27,7 @@ jobs:
         name: Discover versions
         run: |
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
-          echo ersions=${VERSIONS >> ${GITHUB_OUTPUT}
+          echo versions=${VERSIONS} >> ${GITHUB_OUTPUT}
 
 
   find-first-uncompiled-version:

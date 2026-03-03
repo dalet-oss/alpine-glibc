@@ -1,0 +1,76 @@
+name: 'Publish releases'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/publish-releases.yml
+      - apk/arm64/*/*.apk # Output of the package-apks workflow - we expect the x86_64 (amd64) APKs to be merged first
+
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: false
+
+
+jobs:
+
+  discover-unreleased-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      unreleased_versions_json: ${{ steps.discover-versions.outputs.unreleased_versions_json }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Discover versions
+        id: discover-versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
+          UNRELEASED_VERSIONS=''
+          for VERSION in ${VERSIONS[@]}; do
+            for TARGETARCH in amd64 arm64; do
+              if gh release view "${VERSION}-${TARGETARCH}" &>/dev/null; then
+                echo "*** Release ${VERSION}-${TARGETARCH} already exists - nothing to do here."
+              else
+                echo "*** Release ${VERSION}-${TARGETARCH} does not exist; it will be created"
+                UNRELEASED_VERSIONS="${UNRELEASED_VERSIONS} ${VERSION}-${TARGETARCH}"
+              fi
+            done
+          done
+          UNRELEASED_VERSIONS_JSON=$(echo ${UNRELEASED_VERSIONS} | jq  -Rc 'split(" ")')
+          echo unreleased_versions_json=${UNRELEASED_VERSIONS_JSON} >> ${GITHUB_OUTPUT}
+
+
+  publish-new-releases:
+    needs: discover-unreleased-versions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      # avoid parallelising, just to ensure ordering
+      max-parallel: 1
+      matrix:
+        version: ${{ fromJson(needs.discover-unreleased-versions.outputs.unreleased_versions_json) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set env vars
+        run: |
+          echo "VERSION=$(echo ${{ matrix.version }} | cut -d'-' -f1)" >> ${GITHUB_ENV}
+          echo "TARGETARCH=$(echo ${{ matrix.version }} | cut -d'-' -f2)" >> ${GITHUB_ENV}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "${{ matrix.version }}"
+          name: "${{ env.VERSION }} (${{ env.TARGETARCH }})"
+          body: |
+            Version ${{ env.VERSION }} of the GNU C library, glibc, built for Alpine with ${{ env.TARGETARCH }} CPU architecture.
+          files: |
+            apk/${{ env.TARGETARCH }}/${{ env.VERSION }}/glibc*-${{ env.VERSION }}.apk
+          token: ${{ secrets.GITHUB_TOKEN }}

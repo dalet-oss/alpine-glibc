@@ -7,8 +7,7 @@ on:
       - master
     paths:
       - .github/workflows/package-apks.yml
-      - glibc/*aarch64.tar.gz # We expect the x86_64 (amd64) glibc archive to be merged first
-      - apk/arm64/*/*.apk     # We expect the x86_64 (amd64) APKs to be merged first
+      - glibc/*aarch64.tar.gz # Output of the compile-glibc workflow - we expect the x86_64 (amd64) glibc archive to be merged first
 
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -21,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       versions: ${{ steps.discover-versions.outputs.versions }}
-      unreleased_versions_json: ${{ steps.discover-versions.outputs.unreleased_versions_json }}
     steps:
       - uses: actions/checkout@v4
 
@@ -29,14 +27,7 @@ jobs:
         id: discover-versions
         run: |
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
-          UNRELEASED_VERSIONS=''
-          for VERSION in ${VERSIONS[@]}; do
-            gh release view "${VERSION}-amd64" &>/dev/null || UNRELEASED_VERSIONS="${UNRELEASED_VERSIONS} ${VERSION}-amd64"
-            gh release view "${VERSION}-arm64" &>/dev/null || UNRELEASED_VERSIONS="${UNRELEASED_VERSIONS} ${VERSION}-arm64"
-          done
-          UNRELEASED_VERSIONS_JSON=$(echo ${UNRELEASED_VERSIONS} | jq  -Rc 'split(" ")')
           echo versions=${VERSIONS} >> ${GITHUB_OUTPUT}
-          echo unreleased_versions_json=${UNRELEASED_VERSIONS_JSON} >> ${GITHUB_OUTPUT}
 
 
   find-first-unpackaged-version:
@@ -234,6 +225,10 @@ jobs:
         with:
           lfs: true
 
+      - name: Set up QEMU
+        if: matrix.targetarch == 'arm64'
+        uses: docker/setup-qemu-action@v3
+
       - name: Test APK installation for all versions, including signature validation
         run: |
           for VERSION in ${VERSIONS[@]}; do
@@ -244,38 +239,3 @@ jobs:
               alpine:3.23 \
               sh -c 'apk -U add --no-progress --upgrade /packages/*.apk && ls -l /usr/glibc-compat/lib && ls -l /lib64 && ls -l /lib64/${LIBFILE} | grep glibc'
           done
-
-
-  publish-new-releases:
-    needs:
-      - discover-versions
-      - find-first-unpackaged-version
-    if: needs.find-first-unpackaged-version.outputs.packaging_required == ''
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    strategy:
-      # avoid parallelising, just to ensure ordering
-      max-parallel: 1
-      matrix:
-        version: ${{ fromJson(needs.discover-versions.outputs.unreleased_versions_json) }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Set env vars
-        run: |
-          echo "VERSION=$(echo ${{ matrix.version }} | cut -d'-' -f1)" >> ${GITHUB_ENV}
-          echo "TARGETARCH=$(echo ${{ matrix.version }} | cut -d'-' -f2)" >> ${GITHUB_ENV}
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "${{ matrix.version }}"
-          name: "${{ env.VERSION }} (${{ env.TARGETARCH }})"
-          body: |
-            Version ${{ env.VERSION }} of the GNU C library, glibc, built for Alpine with ${{ env.TARGETARCH }} CPU architecture.
-          files: |
-            apk/${{ env.TARGETARCH }}/${{ env.VERSION }}/glibc*-${{ env.VERSION }}.apk
-          token: ${{ secrets.GITHUB_TOKEN }}
