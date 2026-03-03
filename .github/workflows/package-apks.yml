@@ -8,6 +8,7 @@ on:
     paths:
       - .github/workflows/package-apks.yml
       - glibc/*aarch64.tar.gz # We expect the x86_64 (amd64) glibc archive to be merged first
+      - apk/arm64/*/*.apk     # We expect the x86_64 (amd64) APKs to be merged first
 
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -34,11 +35,11 @@ jobs:
             gh release view "${VERSION}-arm64" &>/dev/null || UNRELEASED_VERSIONS="${UNRELEASED_VERSIONS} ${VERSION}-arm64"
           done
           UNRELEASED_VERSIONS_JSON=$(echo ${UNRELEASED_VERSIONS} | jq  -Rc 'split(" ")')
-          echo versions=${VERSIONS} > ${GITHUB_OUTPUT}
+          echo versions=${VERSIONS} >> ${GITHUB_OUTPUT}
           echo unreleased_versions_json=${UNRELEASED_VERSIONS_JSON} >> ${GITHUB_OUTPUT}
 
 
-  find-unpackaged-version:
+  find-first-unpackaged-version:
     needs: discover-versions
     runs-on: ubuntu-latest
     env:
@@ -68,7 +69,7 @@ jobs:
               if [ ! -f "${AMD64_FILENAME}" ] || [ ! -f "${ARM64_FILENAME}" ]; then
                 echo "Missing either ${AMD64_FILENAME} or ${ARM64_FILENAME} - bombing out here until compile-glibc workflows have all been resolved and PRs merged" && false
               fi
-              echo "packaging_required=${VERSION}" > ${GITHUB_OUTPUT}
+              echo "packaging_required=${VERSION}" >> ${GITHUB_OUTPUT}
               echo "amd64_filename=${AMD64_FILENAME}" >> ${GITHUB_OUTPUT}
               echo "arm64_filename=${ARM64_FILENAME}" >> ${GITHUB_OUTPUT}
               echo "amd64_sha512=${AMD64_SHA512}" >> ${GITHUB_OUTPUT}
@@ -79,8 +80,8 @@ jobs:
 
 
   package-apk:
-    needs: find-unpackaged-version
-    if: needs.find-unpackaged-version.outputs.packaging_required != ''
+    needs: find-first-unpackaged-version
+    if: needs.find-first-unpackaged-version.outputs.packaging_required != ''
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -88,18 +89,18 @@ jobs:
           - arch: x86_64
             targetarch: amd64
             libfile: ld-linux-x86-64.so.2
-            filename: ${{ needs.find-unpackaged-version.outputs.amd64_filename }}
-            sha512: ${{ needs.find-unpackaged-version.outputs.amd64_sha512 }}
+            filename: ${{ needs.find-first-unpackaged-version.outputs.amd64_filename }}
+            sha512: ${{ needs.find-first-unpackaged-version.outputs.amd64_sha512 }}
           - arch: aarch64
             targetarch: arm64
             libfile: ld-linux-aarch64.so.1
-            filename: ${{ needs.find-unpackaged-version.outputs.arm64_filename }}
-            sha512: ${{ needs.find-unpackaged-version.outputs.arm64_sha512 }}
+            filename: ${{ needs.find-first-unpackaged-version.outputs.arm64_filename }}
+            sha512: ${{ needs.find-first-unpackaged-version.outputs.arm64_sha512 }}
     permissions:
       contents: write
       pull-requests: write
     env:
-      VERSION: ${{ needs.find-unpackaged-version.outputs.packaging_required }}
+      VERSION: ${{ needs.find-first-unpackaged-version.outputs.packaging_required }}
       ARCH: ${{ matrix.arch }}
       TARGETARCH: ${{ matrix.targetarch }}
       FILENAME: ${{ matrix.filename }}
@@ -214,8 +215,8 @@ jobs:
   verify-apk-installations:
     needs:
       - discover-versions
-      - find-unpackaged-version
-    if: needs.find-unpackaged-version.outputs.packaging_required == ''
+      - find-first-unpackaged-version
+    if: needs.find-first-unpackaged-version.outputs.packaging_required == ''
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -248,8 +249,8 @@ jobs:
   publish-new-releases:
     needs:
       - discover-versions
-      - find-unpackaged-version
-    if: needs.find-unpackaged-version.outputs.packaging_required == ''
+      - find-first-unpackaged-version
+    if: needs.find-first-unpackaged-version.outputs.packaging_required == ''
     runs-on: ubuntu-latest
     permissions:
       contents: write

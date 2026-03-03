@@ -16,19 +16,35 @@ concurrency:
 
 jobs:
 
-  find-uncompiled-version:
+  discover-versions:
     runs-on: ubuntu-latest
     outputs:
-      compile_required: ${{ steps.parse.outputs.compile_required }}
-      targetarch: ${{ steps.parse.outputs.targetarch }}
-      filename: ${{ steps.parse.outputs.filename }}
+      versions: ${{ steps.discover-versions.outputs.versions }}
     steps:
       - uses: actions/checkout@v4
 
-      - id: parse
-        name: Parse glibc-versions.yml
+      - id: discover-versions
+        name: Discover versions
         run: |
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
+          echo "versions=${VERSIONS}" >> ${GITHUB_OUTPUT}
+
+
+  find-first-uncompiled-version:
+    needs: discover-versions
+    runs-on: ubuntu-latest
+    env:
+      VERSIONS: ${{ needs.discover-versions.outputs.versions }}
+    outputs:
+      compile_required: ${{ steps.find.outputs.compile_required }}
+      targetarch: ${{ steps.find.outputs.targetarch }}
+      filename: ${{ steps.find.outputs.filename }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: find
+        name: Find the first uncompiled version (if any exists)
+        run: |
           for VERSION in ${VERSIONS[@]}; do
             AMD64_FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"
             ARM64_FILENAME="./glibc/glibc-bin-${VERSION}-aarch64.tar.gz"
@@ -38,12 +54,12 @@ jobs:
             fi
             if [ ! -f "${AMD64_FILENAME}" ]; then
               echo "Version ${VERSION} has not been compiled for amd64 yet"
-              echo "compile_required=${VERSION}" > ${GITHUB_OUTPUT}
+              echo "compile_required=${VERSION}" >> ${GITHUB_OUTPUT}
               echo "filename=${AMD64_FILENAME}" >> ${GITHUB_OUTPUT}
               echo "targetarch=amd64" >> ${GITHUB_OUTPUT}
             else
               echo "Version ${VERSION} has not been compiled for arm64 yet"
-              echo "compile_required=${VERSION}" > ${GITHUB_OUTPUT}
+              echo "compile_required=${VERSION}" >> ${GITHUB_OUTPUT}
               echo "filename=${ARM64_FILENAME}" >> ${GITHUB_OUTPUT}
               echo "targetarch=arm64" >> ${GITHUB_OUTPUT}
               break
@@ -52,16 +68,16 @@ jobs:
 
 
   compile-glibc:
-    needs: find-uncompiled-version
-    if: needs.find-uncompiled-version.outputs.compile_required != ''
+    needs: find-first-uncompiled-version
+    if: needs.find-first-uncompiled-version.outputs.compile_required != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     env:
-      VERSION: ${{ needs.find-uncompiled-version.outputs.compile_required }}
-      FILENAME: ${{ needs.find-uncompiled-version.outputs.filename }}
-      TARGETARCH: ${{ needs.find-uncompiled-version.outputs.targetarch }}
+      VERSION: ${{ needs.find-first-uncompiled-version.outputs.compile_required }}
+      FILENAME: ${{ needs.find-first-uncompiled-version.outputs.filename }}
+      TARGETARCH: ${{ needs.find-first-uncompiled-version.outputs.targetarch }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,6 +87,7 @@ jobs:
         run: |
           mkdir -p glibc
 
+      # TODO remove this step (see below)
       - name: Check out docker-glibc-builder
         uses: actions/checkout@v4
         with:
@@ -78,24 +95,25 @@ jobs:
           path: .glibc-builder
 
       - name: Set up QEMU
-        if: needs.find-uncompiled-version.outputs.targetarch == 'arm64'
+        if: needs.find-first-uncompiled-version.outputs.targetarch == 'arm64'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Hopefully https://github.com/sgerrand/docker-glibc-builder/issues/63 will get resolved, allowing at least some
-      # of the noise here to be removed - ideally the whole of this step and the one above which checks out this repo
+      # TODO: Hopefully https://github.com/sgerrand/docker-glibc-builder/issues/65 will be addressed, allowing the
+      #       whole of this step and the one above which checks out this repo to be removed, and the subsequent step
+      #       updated to use the public `sgerrand/glibc-builder` Docker image from
+      #       https://hub.docker.com/r/sgerrand/glibc-builder.
       - name: Create up-to-date docker-image for docker-glibc-builder, on ${{ env.TARGETARCH }}; remove source directory
         run: |
           cd .glibc-builder
-          sed -i.bak -e "s/22.04/24.04/g" Dockerfile
-          rm Dockerfile.bak
           docker build --platform linux/${TARGETARCH} -t latest-glibc-builder-${TARGETARCH} .
           cd ..
           rm -rf .glibc-builder
 
       - name: Compile glibc for ${{ env.TARGETARCH }}
+        # TODO use `sgerrand/glibc-builder` (see above)
         run: |
           docker run --rm --env STDOUT=1 latest-glibc-builder-${TARGETARCH} ${VERSION} /usr/glibc-compat > ${FILENAME}
 
@@ -121,9 +139,13 @@ jobs:
 
 
   verify-all-glibc-checksums:
-    needs: find-uncompiled-version
-    if: needs.find-uncompiled-version.outputs.compile_required == ''
+    needs:
+      - discover-versions
+      - find-first-uncompiled-version
+    if: needs.find-first-uncompiled-version.outputs.compile_required == ''
     runs-on: ubuntu-latest
+    env:
+      VERSIONS: ${{ needs.discover-versions.outputs.versions }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -131,7 +153,6 @@ jobs:
 
       - name: Verify all glibc checksums
         run: |
-          VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
           for VERSION in ${VERSIONS[@]}; do
             AMD64_FILENAME="./glibc/glibc-bin-${VERSION}-x86_64.tar.gz"
             ARM64_FILENAME="./glibc/glibc-bin-${VERSION}-aarch64.tar.gz"
