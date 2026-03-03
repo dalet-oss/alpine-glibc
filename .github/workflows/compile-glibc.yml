@@ -7,7 +7,7 @@ on:
       - master
     paths:
       - .github/workflows/compile-glibc.yml
-      - glibc-versions.yml
+      - glibc-versions.yml # Input - and partial output! - of this workflow
 
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'

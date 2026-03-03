@@ -7,7 +7,8 @@ on:
       - master
     paths:
       - .github/workflows/package-apks.yml
-      - glibc/*aarch64.tar.gz # Output of the compile-glibc workflow - we expect the x86_64 (amd64) glibc archive to be merged first
+      - glibc/*aarch64.tar.gz # Output of the compile-glibc workflow; we expect the x86_64 (amd64) glibc archive to come first
+      - apk/arm64/*/*.apk # Output of this workflow
 
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
