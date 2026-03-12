@@ -28,6 +28,9 @@ Maintainers:
 Here is an **excerpt** from a multi-architecture `Dockerfile`, showing how you might consume the binary artifacts in
 our [releases](https://github.com/dalet-oss/alpine-glibc/releases).
 
+The derivation of this, in turn, came from a [long-since-removed AdoptOpenJDK Dockerfile definition](https://github.com/AdoptOpenJDK/openjdk-docker/blob/master/16/jre/alpine/Dockerfile.openj9.releases.full)
+for building an OpenJ9 Alpine Linux Java base image.
+
 ```dockerfile
 ENV GLIBC_VERSION='2.42'
 
