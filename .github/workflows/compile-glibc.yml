@@ -99,7 +99,7 @@ jobs:
         uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # TODO: Hopefully https://github.com/sgerrand/docker-glibc-builder/issues/65 will be addressed, allowing the
       #       whole of this step and the one above which checks out this repo to be removed, and the subsequent step
