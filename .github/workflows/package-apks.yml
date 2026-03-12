@@ -22,7 +22,7 @@ jobs:
     outputs:
       versions: ${{ steps.discover-versions.outputs.versions }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Discover versions
         id: discover-versions
@@ -43,7 +43,7 @@ jobs:
       amd64_sha512: ${{ steps.find.outputs.amd64_sha512 }}
       arm64_sha512: ${{ steps.find.outputs.arm64_sha512 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: find
         name: Find the first unpackaged version (if any exists)
@@ -99,7 +99,7 @@ jobs:
       SHA512: ${{ matrix.sha512 }}
       LIBFILE: ${{ matrix.libfile }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           lfs: true
 
@@ -222,7 +222,7 @@ jobs:
       TARGETARCH: ${{ matrix.targetarch }}
       LIBFILE: ${{ matrix.libfile }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           lfs: true
 
