@@ -140,7 +140,7 @@ jobs:
 
       - name: Set up QEMU
         if: matrix.targetarch == 'arm64'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         if: matrix.targetarch == 'arm64'
@@ -228,7 +228,7 @@ jobs:
 
       - name: Set up QEMU
         if: matrix.targetarch == 'arm64'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Test APK installation for all versions, including signature validation
         run: |
