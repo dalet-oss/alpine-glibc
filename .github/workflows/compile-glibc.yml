@@ -21,7 +21,7 @@ jobs:
     outputs:
       versions: ${{ steps.discover-versions.outputs.versions }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: discover-versions
         name: Discover versions
@@ -40,7 +40,7 @@ jobs:
       targetarch: ${{ steps.find.outputs.targetarch }}
       filename: ${{ steps.find.outputs.filename }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: find
         name: Find the first uncompiled version (if any exists)
@@ -79,7 +79,7 @@ jobs:
       FILENAME: ${{ needs.find-first-uncompiled-version.outputs.filename }}
       TARGETARCH: ${{ needs.find-first-uncompiled-version.outputs.targetarch }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           lfs: true
 
@@ -89,7 +89,7 @@ jobs:
 
       # TODO remove this step (see below)
       - name: Check out docker-glibc-builder
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: sgerrand/docker-glibc-builder
           path: .glibc-builder
@@ -147,7 +147,7 @@ jobs:
     env:
       VERSIONS: ${{ needs.discover-versions.outputs.versions }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           lfs: true
 
