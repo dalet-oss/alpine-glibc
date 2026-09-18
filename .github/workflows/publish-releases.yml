@@ -7,7 +7,10 @@ on:
       - master
     paths:
       - .github/workflows/publish-releases.yml
-      - apk/arm64/*/*.apk # Output of the package-apks workflow - we expect the x86_64 (amd64) APKs to be merged first
+      # Output of the package-apks workflow. Either architecture may be merged first, so watch both;
+      # the run triggered by whichever lands last picks up the architecture that was skipped earlier.
+      - apk/amd64/*/*.apk
+      - apk/arm64/*/*.apk
 
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -34,9 +37,20 @@ jobs:
             for TARGETARCH in amd64 arm64; do
               if gh release view "${VERSION}-${TARGETARCH}" &>/dev/null; then
                 echo "*** Release ${VERSION}-${TARGETARCH} already exists - nothing to do here."
-              else
-                echo "*** Release ${VERSION}-${TARGETARCH} does not exist; it will be created"
+                continue
+              fi
+              # A release must never be published before its APKs have been merged, so only consider a
+              # version releasable once all 4 of its packages (glibc, glibc-bin, glibc-dev, glibc-i18n)
+              # are present for this architecture.
+              APK_COUNT=$(ls apk/${TARGETARCH}/${VERSION}/glibc*-${VERSION}.apk 2>/dev/null | wc -l | tr -d "[:space:]")
+              if [ "${APK_COUNT}" -eq 4 ]; then
+                echo "*** Release ${VERSION}-${TARGETARCH} does not exist, and all 4 APKs are present; it will be created"
                 UNRELEASED_VERSIONS="${UNRELEASED_VERSIONS} ${VERSION}-${TARGETARCH}"
+              elif [ "${APK_COUNT}" -eq 0 ]; then
+                echo "*** Release ${VERSION}-${TARGETARCH} does not exist, but its APKs have not been packaged yet - skipping."
+              else
+                echo "::error::${VERSION}-${TARGETARCH} has ${APK_COUNT} APKs, but expected either 4 (packaged) or 0 (not yet packaged). The package-apks workflow has probably only partially completed."
+                exit 1
               fi
             done
           done
@@ -65,6 +79,20 @@ jobs:
           echo "VERSION=$(echo ${{ matrix.version }} | cut -d'-' -f1)" >> ${GITHUB_ENV}
           echo "TARGETARCH=$(echo ${{ matrix.version }} | cut -d'-' -f2)" >> ${GITHUB_ENV}
 
+      # APKs are stored in Git LFS; if the LFS checkout above silently degrades, the files on disk are
+      # 132-byte pointer stubs rather than packages, and uploading those would produce a release which
+      # looks healthy but is unusable. APKs are gzip streams, so gzip -t tells the two apart.
+      - name: Verify the APKs are valid archives, not Git LFS pointers
+        run: |
+          for APK in apk/${TARGETARCH}/${VERSION}/glibc*-${VERSION}.apk; do
+            if gzip -t "${APK}"; then
+              echo "*** ${APK} is a valid archive"
+            else
+              echo "::error::${APK} is not a valid archive - the Git LFS checkout has probably failed"
+              exit 1
+            fi
+          done
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
@@ -74,4 +102,7 @@ jobs:
             Version ${{ env.VERSION }} of the GNU C library, glibc, built for Alpine with ${{ env.TARGETARCH }} CPU architecture.
           files: |
             apk/${{ env.TARGETARCH }}/${{ env.VERSION }}/glibc*-${{ env.VERSION }}.apk
+          # Backstop for the APK presence check in the discover-unreleased-versions job: never allow a
+          # release to be published with no assets attached.
+          fail_on_unmatched_files: true
           token: ${{ secrets.GITHUB_TOKEN }}
