@@ -66,7 +66,7 @@ jobs:
           echo "TARGETARCH=$(echo ${{ matrix.version }} | cut -d'-' -f2)" >> ${GITHUB_ENV}
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: "${{ matrix.version }}"
           name: "${{ env.VERSION }} (${{ env.TARGETARCH }})"
