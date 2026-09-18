@@ -26,6 +26,12 @@ versions:
   - glibcVersion: '2.44'
     amd64sha512sum: '03d20c2baf0d2cbbd293f066b4c2088f6eee556e69ddda81bb96c65b7a7aaf029b96f4b4d326a801d38218e855ebc166041b7f62b38173436f44c9834ba00989'
     arm64sha512sum: '4891cb49b966a422646d0a6826294520f2c2e7acc00c600a6680314a94f3125ae6932c5ad8f215f3796c23c93cb7784e1e5c88b4d14bddb662e9f2564a896da9'
+    # A bug in the publish-releases workflow published empty '2.44-amd64' and '2.44-arm64' releases before their APKs
+    # had been merged. Those releases were deleted, but this repo has GitHub immutable releases enabled (see
+    # https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases), which permanently
+    # reserves tag names, disallowing reuse even after the release and tag are deleted. This suffix is therefore
+    # appended to 2.44's release tags so that a valid, unreserved tag name can be created.
+    releaseTagSuffix: '-r1'
 ## Copy-and-paste the block below when adding a new version to the list above.
 #  - glibcVersion: '2.xx'
 #    amd64sha512sum: 'deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef0123456789deadbeef012345678900'

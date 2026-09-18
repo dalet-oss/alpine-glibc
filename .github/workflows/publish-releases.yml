@@ -34,9 +34,14 @@ jobs:
           VERSIONS=$(cat glibc-versions.yml | yq '.versions[].glibcVersion')
           UNRELEASED_VERSIONS=''
           for VERSION in ${VERSIONS[@]}; do
+            # Release tags are normally just ${VERSION}-${TARGETARCH}, but a version may carry an optional
+            # releaseTagSuffix in glibc-versions.yml where that tag name is unavailable - see the comment
+            # against 2.44 there for the circumstances in which that becomes necessary.
+            TAG_SUFFIX=$(cat glibc-versions.yml | yq '(.versions[] | select(.glibcVersion == "'"${VERSION}"'") | .releaseTagSuffix // "")')
             for TARGETARCH in amd64 arm64; do
-              if gh release view "${VERSION}-${TARGETARCH}" &>/dev/null; then
-                echo "*** Release ${VERSION}-${TARGETARCH} already exists - nothing to do here."
+              TAG="${VERSION}-${TARGETARCH}${TAG_SUFFIX}"
+              if gh release view "${TAG}" &>/dev/null; then
+                echo "*** Release ${TAG} already exists - nothing to do here."
                 continue
               fi
               # A release must never be published before its APKs have been merged, so only consider a
@@ -44,12 +49,12 @@ jobs:
               # are present for this architecture.
               APK_COUNT=$(ls apk/${TARGETARCH}/${VERSION}/glibc*-${VERSION}.apk 2>/dev/null | wc -l | tr -d "[:space:]")
               if [ "${APK_COUNT}" -eq 4 ]; then
-                echo "*** Release ${VERSION}-${TARGETARCH} does not exist, and all 4 APKs are present; it will be created"
-                UNRELEASED_VERSIONS="${UNRELEASED_VERSIONS} ${VERSION}-${TARGETARCH}"
+                echo "*** Release ${TAG} does not exist, and all 4 APKs are present; it will be created"
+                UNRELEASED_VERSIONS="${UNRELEASED_VERSIONS} ${TAG}"
               elif [ "${APK_COUNT}" -eq 0 ]; then
-                echo "*** Release ${VERSION}-${TARGETARCH} does not exist, but its APKs have not been packaged yet - skipping."
+                echo "*** Release ${TAG} does not exist, but its APKs have not been packaged yet - skipping."
               else
-                echo "::error::${VERSION}-${TARGETARCH} has ${APK_COUNT} APKs, but expected either 4 (packaged) or 0 (not yet packaged). The package-apks workflow has probably only partially completed."
+                echo "::error::${TAG} has ${APK_COUNT} APKs, but expected either 4 (packaged) or 0 (not yet packaged). The package-apks workflow has probably only partially completed."
                 exit 1
               fi
             done
@@ -74,6 +79,9 @@ jobs:
         with:
           lfs: true
 
+      # matrix.version is the release tag, which may carry a releaseTagSuffix (e.g. '2.44-amd64-r1').
+      # Taking the first two hyphen-separated fields discards any such suffix, which is what we want:
+      # the suffix belongs to the tag only, and never to the version or the APK paths on disk.
       - name: Set env vars
         run: |
           echo "VERSION=$(echo ${{ matrix.version }} | cut -d'-' -f1)" >> ${GITHUB_ENV}
